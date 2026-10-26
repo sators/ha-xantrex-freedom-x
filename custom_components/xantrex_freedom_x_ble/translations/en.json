@@ -1,0 +1,25 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect a Xantrex Freedom X Bluetooth remote",
+        "description": "Experimental monitoring for the Freedom X 2000 12 V remote. Disconnect FXC Control and Bluetooth scanner apps first. Default sensors are AC voltage, AC frequency, and battery voltage. Provisional interpretations are optional diagnostics and require comparison with FXC Control.",
+        "data": {
+          "address": "Bluetooth address",
+          "poll_interval": "Seconds between reads (30–600)",
+          "enable_provisional_sensors": "Include provisional current, power, load, and battery-level diagnostics"
+        }
+      }
+    },
+    "error": {
+      "invalid_address": "Enter a Bluetooth address in AA:BB:CC:DD:EE:FF format.",
+      "cannot_connect": "Cannot read the remote. Disconnect phone apps and check Bluetooth range, then try again.",
+      "unsupported_device": "The device did not identify as a Xantrex Freedom X Remote.",
+      "unsupported_payload": "The payload differs from the observed 12 V protocol. No sensors were created."
+    },
+    "abort": {
+      "already_configured": "This Xantrex remote is already configured."
+    }
+  }
+}
