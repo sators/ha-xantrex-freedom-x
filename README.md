@@ -108,6 +108,8 @@ Disable or remove the integration through **Devices & services** to stop polling
 
 ## Help validate the protocol
 
+See the [comparison guide and validation matrix](docs/VALIDATION.md) for repeatable app/panel comparisons and the remaining mapping gaps.
+
 [Open an issue](https://github.com/sators/ha-xantrex-freedom-x/issues) with the inverter model, DC system voltage, remote-panel firmware, Home Assistant version, adapter/proxy type, and the problem or observed mismatch. Useful evidence includes reviewed diagnostics and readings from the panel or FXC Control taken as close together as possible. Note whether the inverter was in bypass or inverter operation; never interrupt power or change protective settings just to collect a sample.
 
 Remove serial numbers, Bluetooth addresses, and other installation details before posting screenshots or logs. Do not post passwords or Home Assistant tokens. Compatibility reports for additional hardware are welcome, but one successful connection does not validate every field or operating mode.
