@@ -1,6 +1,7 @@
 """Exercise real Home Assistant imports and our BLE lifecycle with a fake radio."""
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ from custom_components.xantrex_freedom_x_ble.coordinator import (
     fetch_snapshot,
 )
 from custom_components.xantrex_freedom_x_ble.protocol import ProtocolError
+from homeassistant.components.bluetooth.match import IntegrationMatcher
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 # Reuse the read-only fake whose global UUID lookup deliberately fails.
@@ -121,6 +123,18 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     def test_flow_is_registered(self):
         self.assertEqual(config_flow.XantrexConfigFlow.VERSION, 1)
+
+    def test_manifest_discovery_matchers_can_initialize_bluetooth(self):
+        manifest = json.loads(
+            (
+                Path(__file__).parents[1]
+                / "custom_components/xantrex_freedom_x_ble/manifest.json"
+            ).read_text()
+        )
+        matchers = [
+            dict(item, domain=manifest["domain"]) for item in manifest["bluetooth"]
+        ]
+        IntegrationMatcher(matchers).async_setup()
 
 
 if __name__ == "__main__":

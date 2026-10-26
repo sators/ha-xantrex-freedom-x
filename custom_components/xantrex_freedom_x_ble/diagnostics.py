@@ -8,7 +8,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
     coordinator = entry.runtime_data
     snapshot = coordinator.data
     return {
-        "integration_version": "0.1.0",
+        "integration_version": "0.1.1",
         "manufacturer": snapshot.identity.manufacturer,
         "model": snapshot.identity.model,
         "address": "**REDACTED**",
