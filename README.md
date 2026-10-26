@@ -2,6 +2,10 @@
 
 Experimental **read-only** Home Assistant integration for a **Freedom X 2000 12 V** inverter with a **Freedom X Bluetooth Remote Panel**. Independent community software; not affiliated with Xantrex.
 
+[![Tests](https://github.com/sators/ha-xantrex-freedom-x/actions/workflows/tests.yml/badge.svg)](https://github.com/sators/ha-xantrex-freedom-x/actions/workflows/tests.yml)
+
+**[Install through HACS](#install-with-hacs-recommended)** · [Report a problem](https://github.com/sators/ha-xantrex-freedom-x/issues) · [Protocol mapping](#mapping-status)
+
 This is a protocol prototype built from device captures. Parser and fake-client tests are provided. A live Home Assistant installation and reads from the inverter still need verification. Do not treat the supplied sample frames as live delivery evidence.
 
 ## What it does
