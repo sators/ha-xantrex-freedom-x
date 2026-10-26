@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Distinguish AC input from output using controlled bypass/inverter/bypass captures. Expose both voltage/frequency pairs and an explicitly inferred power path; ambiguous states remain unknown.
+- Add real LOAD watts and reported load percentage. Correct earlier provisional mappings: byte 8 is apparent power in VA, byte 10 is real power in W, not current. New entities avoid mixing incompatible old history.
+- Keep reported battery percentage provisional until validated below 100%; no inverter DC current or raw mode flag is claimed.
+- Add an on-demand, serialized diagnostic capture of additional custom-service blocks. Routine polling still reads only the original telemetry blocks; no writes are implemented.
+- Avoid duplicate Bluetooth discovery for an already configured address. Existing disabled channel-2 entities may need manual enabling after upgrade.
+
 ## 0.1.2
 
 - Show battery voltage and provisional AC current with two decimal places, and AC voltage/frequency with one. Home Assistant's whole-number default hid useful precision (for example, 14.52 V appeared as 15 V).

@@ -1,16 +1,20 @@
 {
   "domain": "xantrex_freedom_x_ble",
   "name": "Xantrex Freedom X BLE (Experimental)",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "bluetooth": [
     {
       "service_uuid": "00001910-0000-1000-8000-00805f9b34fb",
       "connectable": true
     }
   ],
-  "codeowners": ["@sators"],
+  "codeowners": [
+    "@sators"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth_adapters"],
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
   "documentation": "https://github.com/sators/ha-xantrex-freedom-x",
   "issue_tracker": "https://github.com/sators/ha-xantrex-freedom-x/issues",
   "integration_type": "device",

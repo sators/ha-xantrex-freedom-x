@@ -1,5 +1,6 @@
 """Exercise real Home Assistant imports and our BLE lifecycle with a fake radio."""
 
+import asyncio
 import importlib.util
 import json
 import unittest
@@ -76,14 +77,23 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.connector.assert_not_awaited()
 
     async def test_changed_serial_rejects_sample(self):
-        coordinator = SimpleNamespace(
-            hass=object(),
-            entry=SimpleNamespace(
-                data={"address": "AA:BB:CC:DD:EE:FF", "serial": "DIFFERENT"}
-            ),
+        coordinator = XantrexCoordinator.__new__(XantrexCoordinator)
+        coordinator.hass = object()
+        coordinator._read_lock = asyncio.Lock()
+        coordinator.entry = SimpleNamespace(
+            data={"address": "AA:BB:CC:DD:EE:FF", "serial": "DIFFERENT"}
         )
         with self.assertRaises(UpdateFailed):
             await XantrexCoordinator._async_update_data(coordinator)
+        self.client.disconnect.assert_awaited_once()
+
+    async def test_extended_capture_is_explicit_and_releases_connection(self):
+        result = await fetch_snapshot(
+            object(), "AA:BB:CC:DD:EE:FF", capture_details=True
+        )
+        self.assertIn("1910/2a01", result.diagnostic_fields)
+        self.assertNotIn("1910/2a02", result.diagnostic_fields)
+        self.assertEqual(result.telemetry.values["load_power"], 414)
         self.client.disconnect.assert_awaited_once()
 
     async def test_provisional_entities_require_opt_in_and_no_statistics(self):
@@ -104,7 +114,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
                 entities.extend,
             )
             provisional = [e for e in entities if e.entity_description.provisional]
-            self.assertEqual(len(provisional), 4 if enabled else 0)
+            self.assertEqual(len(provisional), 1 if enabled else 0)
             for entity in provisional:
                 self.assertIsNone(entity.entity_description.state_class)
 
@@ -124,14 +134,30 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     def test_flow_is_registered(self):
         self.assertEqual(config_flow.XantrexConfigFlow.VERSION, 1)
 
+    async def test_known_bluetooth_address_does_not_create_duplicate_discovery(self):
+        flow = config_flow.XantrexConfigFlow()
+        with patch.object(
+            flow,
+            "_async_current_entries",
+            return_value=[SimpleNamespace(data={"address": "AA:BB:CC:DD:EE:FF"})],
+        ):
+            result = await flow.async_step_bluetooth(
+                SimpleNamespace(address="aa:bb:cc:dd:ee:ff")
+            )
+        self.assertEqual(result["type"], "abort")
+        self.assertEqual(result["reason"], "already_configured")
+
     def test_measurement_display_preserves_useful_precision(self):
         descriptions = {item.key: item for item in sensor.SENSORS}
         self.assertEqual(descriptions["battery_voltage"].suggested_display_precision, 2)
         self.assertEqual(descriptions["ac_voltage"].suggested_display_precision, 1)
         self.assertEqual(descriptions["ac_frequency"].suggested_display_precision, 1)
+        self.assertEqual(descriptions["load_power"].suggested_display_precision, 0)
+        self.assertEqual(descriptions["load_power"].native_unit_of_measurement, "W")
         self.assertEqual(
-            descriptions["ac_current_provisional"].suggested_display_precision, 2
+            descriptions["load_apparent_power"].native_unit_of_measurement, "VA"
         )
+        self.assertEqual(descriptions["power_path"].device_class, "enum")
 
     def test_manifest_discovery_matchers_can_initialize_bluetooth(self):
         manifest = json.loads(

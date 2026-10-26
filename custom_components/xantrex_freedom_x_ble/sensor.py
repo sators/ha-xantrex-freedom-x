@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
-    UnitOfElectricCurrent,
+    UnitOfApparentPower,
     UnitOfElectricPotential,
     UnitOfFrequency,
     UnitOfPower,
@@ -31,9 +31,16 @@ class XantrexSensorDescription(SensorEntityDescription):
 
 SENSORS = (
     XantrexSensorDescription(
+        key="power_path",
+        translation_key="power_path",
+        device_class=SensorDeviceClass.ENUM,
+        options=["ac_bypass", "dc_inverting", "no_ac_output"],
+        icon="mdi:transmission-tower",
+    ),
+    XantrexSensorDescription(
         key="ac_voltage",
         suggested_display_precision=1,
-        name="AC voltage",
+        name="AC input voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -41,7 +48,7 @@ SENSORS = (
     XantrexSensorDescription(
         key="ac_frequency",
         suggested_display_precision=1,
-        name="AC frequency",
+        name="AC input frequency",
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
         state_class=SensorStateClass.MEASUREMENT,
@@ -57,44 +64,43 @@ SENSORS = (
     XantrexSensorDescription(
         key="ac_voltage_2",
         suggested_display_precision=1,
-        name="AC voltage channel 2",
+        name="AC output voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     XantrexSensorDescription(
         key="ac_frequency_2",
         suggested_display_precision=1,
-        name="AC frequency channel 2",
+        name="AC output frequency",
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     XantrexSensorDescription(
-        key="ac_current_provisional",
-        suggested_display_precision=2,
-        name="AC current (provisional)",
-        device_class=SensorDeviceClass.CURRENT,
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        provisional=True,
-    ),
-    XantrexSensorDescription(
-        key="ac_power_provisional",
-        name="AC power (provisional)",
+        key="load_power",
+        suggested_display_precision=0,
+        name="Load power",
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.WATT,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        provisional=True,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     XantrexSensorDescription(
-        key="load_provisional",
-        name="Load (provisional)",
+        key="load_percentage",
+        suggested_display_precision=0,
+        name="Load percentage",
         native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    XantrexSensorDescription(
+        key="load_apparent_power",
+        suggested_display_precision=0,
+        name="Load apparent power",
+        device_class=SensorDeviceClass.APPARENT_POWER,
+        native_unit_of_measurement=UnitOfApparentPower.VOLT_AMPERE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        provisional=True,
+        entity_registry_enabled_default=False,
     ),
     XantrexSensorDescription(
         key="battery_level_provisional",
@@ -128,3 +134,9 @@ class XantrexSensor(XantrexEntity, SensorEntity):
     @property
     def native_value(self):
         return self.coordinator.data.telemetry.values[self.entity_description.key]
+
+    @property
+    def extra_state_attributes(self):
+        if self.entity_description.key == "power_path":
+            return {"basis": "inferred_from_ac_input_output_voltage_and_frequency"}
+        return None

@@ -16,7 +16,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL, DOMAIN
-from .protocol import Identity, ProtocolError, Telemetry, read_identity, read_telemetry
+from .protocol import (
+    Identity,
+    ProtocolError,
+    Telemetry,
+    read_diagnostic_fields,
+    read_identity,
+    read_telemetry,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,9 +33,12 @@ class Snapshot:
     identity: Identity
     telemetry: Telemetry
     observed_at: datetime
+    diagnostic_fields: dict | None = None
 
 
-async def fetch_snapshot(hass: HomeAssistant, address: str) -> Snapshot:
+async def fetch_snapshot(
+    hass: HomeAssistant, address: str, *, capture_details: bool = False
+) -> Snapshot:
     """Connect, verify identity, read one complete sample, and release the panel.
 
     Use a new client for every connection. Never disconnect another app,
@@ -52,7 +62,9 @@ async def fetch_snapshot(hass: HomeAssistant, address: str) -> Snapshot:
             )
             identity = await read_identity(client)
             telemetry = await read_telemetry(client)
-            return Snapshot(identity, telemetry, datetime.now(timezone.utc))
+            observed_at = datetime.now(timezone.utc)
+            details = await read_diagnostic_fields(client) if capture_details else None
+            return Snapshot(identity, telemetry, observed_at, details)
     finally:
         if client is not None:
             with suppress(BleakError, TimeoutError):
@@ -74,14 +86,26 @@ class XantrexCoordinator(DataUpdateCoordinator[Snapshot]):
             ),
         )
         self.entry = entry
+        self._read_lock = asyncio.Lock()
+
+    async def async_capture_diagnostics(self) -> Snapshot:
+        """Serialize an explicit extended capture with routine polling."""
+        async with self._read_lock:
+            snapshot = await fetch_snapshot(
+                self.hass, self.entry.data["address"], capture_details=True
+            )
+            self._validate_identity(snapshot)
+            return snapshot
+
+    def _validate_identity(self, snapshot: Snapshot) -> None:
+        if snapshot.identity.serial != self.entry.data["serial"]:
+            raise ProtocolError("The connected remote has a different serial number")
 
     async def _async_update_data(self) -> Snapshot:
         try:
-            snapshot = await fetch_snapshot(self.hass, self.entry.data["address"])
-            if snapshot.identity.serial != self.entry.data["serial"]:
-                raise ProtocolError(
-                    "The connected remote has a different serial number"
-                )
+            async with self._read_lock:
+                snapshot = await fetch_snapshot(self.hass, self.entry.data["address"])
+                self._validate_identity(snapshot)
             return snapshot
         except (BleakError, ProtocolError, TimeoutError, OSError) as err:
             raise UpdateFailed(str(err)) from err

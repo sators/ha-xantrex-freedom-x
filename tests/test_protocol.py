@@ -16,6 +16,10 @@ spec.loader.exec_module(protocol)
 
 LIVE = bytes.fromhex("A604 5802 A604 5802 F201 9E01 1800 0101 AC05 0000")
 AUX = bytes.fromhex("6400 0E02 2900 0000 0000 0200 0000 0000 0000 004C")
+INVERTING = bytes.fromhex("00000000b00458022c0202021b00d40051050000")
+INVERTING_AUX = bytes.fromhex("6400150200000000000002000000002000000042")
+BYPASS_RETURN = bytes.fromhex("b0045702b004570298015c011400fa0081050000")
+BYPASS_RETURN_AUX = bytes.fromhex("6400f7012200000000000200000000000000004c")
 
 
 class ProtocolTests(unittest.TestCase):
@@ -25,14 +29,47 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.values["ac_frequency"], 60.0)
         self.assertEqual(result.values["ac_voltage_2"], 119.0)
         self.assertEqual(result.values["battery_voltage"], 14.52)
-        self.assertEqual(result.values["ac_current_provisional"], 4.14)
-        self.assertEqual(result.values["ac_power_provisional"], 498)
-        self.assertEqual(result.values["load_provisional"], 24)
+        self.assertEqual(result.values["load_power"], 414)
+        self.assertEqual(result.values["load_apparent_power"], 498)
+        self.assertEqual(result.values["load_percentage"], 24)
         self.assertEqual(result.values["battery_level_provisional"], 100)
         self.assertEqual(result.raw["2a03"], LIVE.hex())
         self.assertEqual(result.words["2a03"][7], 257)
         self.assertNotIn("operating_mode", result.values)
         self.assertNotIn("battery_current", result.values)
+        self.assertEqual(result.values["power_path"], "ac_bypass")
+
+    def test_confirmed_dc_inverting_capture(self):
+        result = protocol.parse_telemetry(INVERTING, INVERTING_AUX)
+        self.assertEqual(result.values["ac_voltage"], 0.0)
+        self.assertEqual(result.values["ac_frequency"], 0.0)
+        self.assertEqual(result.values["ac_voltage_2"], 120.0)
+        self.assertEqual(result.values["ac_frequency_2"], 60.0)
+        self.assertEqual(result.values["battery_voltage"], 13.61)
+        self.assertEqual(result.values["power_path"], "dc_inverting")
+        self.assertEqual(result.values["load_power"], 514)
+
+    def test_return_to_bypass_separates_watts_from_va(self):
+        result = protocol.parse_telemetry(BYPASS_RETURN, BYPASS_RETURN_AUX)
+        self.assertEqual(result.values["power_path"], "ac_bypass")
+        self.assertEqual(result.values["load_power"], 348)
+        self.assertEqual(result.values["load_apparent_power"], 408)
+        self.assertEqual(result.values["load_percentage"], 20)
+        self.assertEqual(result.values["ac_frequency"], 59.9)
+        self.assertNotIn("ac_current_provisional", result.values)
+
+    def test_power_path_does_not_guess_ambiguous_or_brownout_states(self):
+        for values in [(120, 60, 110, 60), (40, 60, 120, 60), (0, 0, 120, 0)]:
+            with self.subTest(values=values):
+                self.assertIsNone(protocol.power_path(*values))
+        self.assertEqual(protocol.power_path(0, 0, 0, 0), "no_ac_output")
+        self.assertEqual(protocol.power_path(120, 60, 0, 0), "no_ac_output")
+
+    def test_power_path_does_not_depend_on_unmapped_status_word(self):
+        words = list(protocol.words_le(INVERTING))
+        words[7] = 257
+        result = protocol.parse_telemetry(struct.pack("<10H", *words), INVERTING_AUX)
+        self.assertEqual(result.values["power_path"], "dc_inverting")
 
     def test_rejects_truncation_and_extensions(self):
         for length in (0, 1, 19, 21, 40):
@@ -61,7 +98,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.values["ac_frequency"], 0)
         self.assertEqual(result.values["battery_voltage"], 12.8)
 
-    def test_invalid_provisional_values_become_unknown(self):
+    def test_invalid_load_and_provisional_values_become_unknown(self):
         words = list(protocol.words_le(LIVE))
         words[4:7] = [65535, 65535, 65535]
         aux = [65535] + [0] * 9
@@ -69,9 +106,9 @@ class ProtocolTests(unittest.TestCase):
             struct.pack("<10H", *words), struct.pack("<10H", *aux)
         )
         for key in (
-            "ac_power_provisional",
-            "ac_current_provisional",
-            "load_provisional",
+            "load_power",
+            "load_apparent_power",
+            "load_percentage",
             "battery_level_provisional",
         ):
             self.assertIsNone(result.values[key])
@@ -148,6 +185,17 @@ class ReadOnlyClient:
 
 
 class ReadTests(unittest.IsolatedAsyncioTestCase):
+    async def test_diagnostic_reads_are_scoped_and_exclude_identity(self):
+        client = ReadOnlyClient()
+        client.services.fields[protocol.LIVE_SERVICE].fields[protocol.uuid("2a05")] = (
+            Characteristic(bytes.fromhex("01020304"))
+        )
+        details = await protocol.read_diagnostic_fields(client)
+        self.assertEqual(details["1910/2a05"], {"hex": "01020304"})
+        self.assertEqual(details["1911/2a11"], {"error_type": "ProtocolError"})
+        self.assertNotIn("1910/2a02", details)
+        self.assertEqual(len(client.reads), 1)
+
     async def test_scoped_read_with_duplicate_characteristic_uuid(self):
         client = ReadOnlyClient()
         identity = await protocol.read_identity(client)

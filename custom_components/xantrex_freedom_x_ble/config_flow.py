@@ -26,7 +26,14 @@ class XantrexConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_bluetooth(
         self, discovery_info: bluetooth.BluetoothServiceInfoBleak
     ) -> ConfigFlowResult:
-        self._address = discovery_info.address
+        self._address = discovery_info.address.upper()
+        if any(
+            entry.data.get(CONF_ADDRESS, "").upper() == self._address
+            for entry in self._async_current_entries()
+        ):
+            return self.async_abort(reason="already_configured")
+        # Deduplicate pending discovery flows before identity is read on submit.
+        await self.async_set_unique_id(self._address)
         self.context["title_placeholders"] = {"name": "Xantrex Freedom X Remote"}
         return await self.async_step_user()
 
