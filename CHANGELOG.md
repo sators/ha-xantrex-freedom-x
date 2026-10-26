@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Add AC input current from the correct auxiliary-frame field; app/capture comparisons agree at 3.4 A in bypass and zero in DC inverter mode.
+- Add nine optional, read-only numeric settings diagnostics after comparing the live FXC Settings screen. Routine polling reads the settings block too; no setting writes or controls are added. Settings were validated at one configuration, not across every allowed value.
+- Register provisional battery percentage disabled by default so existing installations can enable it without deleting their device. It remains unverified below 100%; prefer the BMS for net battery capacity.
+- Verify the installed power-path entity through a second controlled bypass/inverter/bypass cycle and publish sanitized regression captures and a comparison guide. Raw mode flags, DC current, and fault meanings remain unmapped.
+
 ## 0.2.0
 
 - Distinguish AC input from output using controlled bypass/inverter/bypass captures. Expose both voltage/frequency pairs and an explicitly inferred power path; ambiguous states remain unknown.

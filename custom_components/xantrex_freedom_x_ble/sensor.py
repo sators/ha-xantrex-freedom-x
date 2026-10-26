@@ -1,6 +1,6 @@
 """Conservative telemetry sensors and opt-in provisional interpretations."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -13,9 +13,11 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfApparentPower,
+    UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfFrequency,
     UnitOfPower,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -78,6 +80,14 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     XantrexSensorDescription(
+        key="ac_input_current",
+        suggested_display_precision=1,
+        name="AC input current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    XantrexSensorDescription(
         key="load_power",
         suggested_display_precision=0,
         name="Load power",
@@ -108,7 +118,84 @@ SENSORS = (
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         provisional=True,
+        entity_registry_enabled_default=False,
     ),
+) + tuple(
+    XantrexSensorDescription(
+        key=key,
+        name=name,
+        native_unit_of_measurement=unit,
+        suggested_display_precision=precision,
+        device_class=device_class,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        icon="mdi:eye-settings-outline",
+    )
+    for key, name, unit, precision, device_class in (
+        (
+            "low_battery_cutoff",
+            "Configured low battery cutoff",
+            UnitOfElectricPotential.VOLT,
+            1,
+            SensorDeviceClass.VOLTAGE,
+        ),
+        (
+            "low_battery_cutoff_delay",
+            "Configured low battery cutoff delay",
+            UnitOfTime.SECONDS,
+            0,
+            SensorDeviceClass.DURATION,
+        ),
+        (
+            "low_battery_recovery",
+            "Configured low battery recovery",
+            UnitOfElectricPotential.VOLT,
+            1,
+            SensorDeviceClass.VOLTAGE,
+        ),
+        (
+            "power_save_time",
+            "Configured power save time",
+            UnitOfTime.HOURS,
+            0,
+            SensorDeviceClass.DURATION,
+        ),
+        (
+            "configured_output_frequency",
+            "Configured output frequency",
+            UnitOfFrequency.HERTZ,
+            1,
+            SensorDeviceClass.FREQUENCY,
+        ),
+        (
+            "configured_output_voltage",
+            "Configured output voltage",
+            UnitOfElectricPotential.VOLT,
+            0,
+            SensorDeviceClass.VOLTAGE,
+        ),
+        (
+            "output_power_limit",
+            "Configured output power limit",
+            UnitOfPower.WATT,
+            0,
+            SensorDeviceClass.POWER,
+        ),
+        (
+            "output_power_limit_delay",
+            "Configured output power limit delay",
+            UnitOfTime.SECONDS,
+            0,
+            SensorDeviceClass.DURATION,
+        ),
+        (
+            "utility_ac_under_voltage",
+            "Configured utility AC under voltage",
+            UnitOfElectricPotential.VOLT,
+            0,
+            SensorDeviceClass.VOLTAGE,
+        ),
+    )
 )
 
 
@@ -117,9 +204,13 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     async_add_entities(
-        XantrexSensor(coordinator, description)
+        XantrexSensor(
+            coordinator,
+            replace(description, entity_registry_enabled_default=True)
+            if description.provisional and entry.data.get(CONF_PROVISIONAL, False)
+            else description,
+        )
         for description in SENSORS
-        if not description.provisional or entry.data.get(CONF_PROVISIONAL, False)
     )
 
 

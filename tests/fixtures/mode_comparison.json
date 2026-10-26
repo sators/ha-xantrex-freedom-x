@@ -1,0 +1,56 @@
+[
+  {
+    "confirmed_panel_mode": "ac_bypass",
+    "raw": {
+      "2a03": "b0045802b0045802ac01640115000001a2050000",
+      "2a04": "640006022300000000000200000000000000004c"
+    },
+    "settings": "0078002c01830019005802780014002c01005a00",
+    "expected": {
+      "ac_voltage": 120.0,
+      "ac_frequency": 60.0,
+      "ac_voltage_2": 120.0,
+      "ac_frequency_2": 60.0,
+      "battery_voltage": 14.42,
+      "load_power": 356,
+      "load_percentage": 21
+    },
+    "expected_ac_input_current": 3.5
+  },
+  {
+    "confirmed_panel_mode": "dc_inverting",
+    "raw": {
+      "2a03": "00000000b0045802980173011400dc007c050000",
+      "2a04": "64000a0200000000000002000000002000000042"
+    },
+    "settings": "0078002c01830019005802780014002c01005a00",
+    "expected": {
+      "ac_voltage": 0.0,
+      "ac_frequency": 0.0,
+      "ac_voltage_2": 120.0,
+      "ac_frequency_2": 60.0,
+      "battery_voltage": 14.04,
+      "load_power": 371,
+      "load_percentage": 20
+    },
+    "expected_ac_input_current": 0.0
+  },
+  {
+    "confirmed_panel_mode": "ac_bypass",
+    "raw": {
+      "2a03": "b0045802b00458029b016e011400f50084050000",
+      "2a04": "640011022200000000000200000000000000004c"
+    },
+    "settings": "0078002c01830019005802780014002c01005a00",
+    "expected": {
+      "ac_voltage": 120.0,
+      "ac_frequency": 60.0,
+      "ac_voltage_2": 120.0,
+      "ac_frequency_2": 60.0,
+      "battery_voltage": 14.12,
+      "load_power": 366,
+      "load_percentage": 20
+    },
+    "expected_ac_input_current": 3.4
+  }
+]

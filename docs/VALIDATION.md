@@ -23,7 +23,7 @@ Keep full diagnostics private until reviewed. The integration excludes its known
 | Different naturally occurring battery voltages | DC voltage scaling | 13.59–14.52 V captured; app comparison consistent |
 | Output off, when normally appropriate | Off/standby states and mode bits | Not yet captured; no-output inference is tested with synthetic frames only |
 | Naturally occurring warning/fault, without provoking one | Warning/fault bit meanings | Unmapped; do not induce faults for testing |
-| Settings screen readback with unchanged settings | Candidate configuration field scales | Unmapped; matching one value is insufficient to expose controls |
+| Settings screen readback with unchanged settings | Numeric configuration readback scales | Nine numeric values match; optional read-only sensors. Other values/firmware and categorical flags remain unverified; no controls |
 
 ## Separate measurements from interpretations
 
@@ -36,3 +36,9 @@ Keep full diagnostics private until reviewed. The integration excludes its known
 - BMS/shunt signed current and power describe **net battery flow**. Inverter AC LOAD includes power delivered through bypass; in DC mode a converter or solar charger can also feed the bus. Do not treat AC LOAD as battery drain or calculate converter output by subtracting non-simultaneous readings.
 
 New mappings need repeated observations, a documented scale/range, an unknown/unavailable policy, sanitized regression fixtures, and framework tests before they become default entities. Keep unverified fields in diagnostics.
+
+## Repeated mode comparison
+
+The installed 0.2.0 power-path entity followed a second controlled bypass → inverter → bypass cycle correctly. Additional custom-service blocks were identical across that cycle; the changes were confined to live telemetry. In `2A04`, word 7 changed from 0 to 8192 and word 9 from 19456 (`0x4C00`) to 16896 (`0x4200`), then both returned. These are **candidate status bits**, not a decoded general mode enum: off/standby, transfer transitions, and warnings/fault combinations have not been captured. The default mode remains explicitly inferred from validated V/Hz pairs.
+
+Sanitized live-frame regression data is in `tests/fixtures/mode_comparison.json`. No device identifiers or full Home Assistant export wrappers are included.

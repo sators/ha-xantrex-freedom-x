@@ -1,6 +1,7 @@
 """Captured-frame and service-scoping tests; no Home Assistant install needed."""
 
 import importlib.util
+import json
 import struct
 import sys
 import unittest
@@ -20,9 +21,30 @@ INVERTING = bytes.fromhex("00000000b00458022c0202021b00d40051050000")
 INVERTING_AUX = bytes.fromhex("6400150200000000000002000000002000000042")
 BYPASS_RETURN = bytes.fromhex("b0045702b004570298015c011400fa0081050000")
 BYPASS_RETURN_AUX = bytes.fromhex("6400f7012200000000000200000000000000004c")
+SETTINGS = bytes.fromhex("0078002c01830019005802780014002c01005a00")
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_repeated_controlled_mode_cycle(self):
+        fixture = Path(__file__).parent / "fixtures/mode_comparison.json"
+        for sample in json.loads(fixture.read_text()):
+            with self.subTest(mode=sample["confirmed_panel_mode"]):
+                result = protocol.parse_telemetry(
+                    bytes.fromhex(sample["raw"]["2a03"]),
+                    bytes.fromhex(sample["raw"]["2a04"]),
+                    bytes.fromhex(sample["settings"]),
+                )
+                self.assertEqual(
+                    result.values["power_path"], sample["confirmed_panel_mode"]
+                )
+                self.assertEqual(
+                    result.values["ac_input_current"],
+                    sample["expected_ac_input_current"],
+                )
+                for key, value in sample["expected"].items():
+                    self.assertEqual(result.values[key], value)
+                self.assertEqual(result.values["low_battery_recovery"], 13.1)
+
     def test_captured_live_sample(self):
         result = protocol.parse_telemetry(LIVE, AUX)
         self.assertEqual(result.values["ac_voltage"], 119.0)
@@ -32,6 +54,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.values["load_power"], 414)
         self.assertEqual(result.values["load_apparent_power"], 498)
         self.assertEqual(result.values["load_percentage"], 24)
+        self.assertEqual(result.values["ac_input_current"], 4.1)
         self.assertEqual(result.values["battery_level_provisional"], 100)
         self.assertEqual(result.raw["2a03"], LIVE.hex())
         self.assertEqual(result.words["2a03"][7], 257)
@@ -48,6 +71,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.values["battery_voltage"], 13.61)
         self.assertEqual(result.values["power_path"], "dc_inverting")
         self.assertEqual(result.values["load_power"], 514)
+        self.assertEqual(result.values["ac_input_current"], 0.0)
 
     def test_return_to_bypass_separates_watts_from_va(self):
         result = protocol.parse_telemetry(BYPASS_RETURN, BYPASS_RETURN_AUX)
@@ -55,6 +79,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.values["load_power"], 348)
         self.assertEqual(result.values["load_apparent_power"], 408)
         self.assertEqual(result.values["load_percentage"], 20)
+        self.assertEqual(result.values["ac_input_current"], 3.4)
         self.assertEqual(result.values["ac_frequency"], 59.9)
         self.assertNotIn("ac_current_provisional", result.values)
 
@@ -102,6 +127,7 @@ class ProtocolTests(unittest.TestCase):
         words = list(protocol.words_le(LIVE))
         words[4:7] = [65535, 65535, 65535]
         aux = [65535] + [0] * 9
+        aux[2] = 65535
         result = protocol.parse_telemetry(
             struct.pack("<10H", *words), struct.pack("<10H", *aux)
         )
@@ -110,9 +136,36 @@ class ProtocolTests(unittest.TestCase):
             "load_apparent_power",
             "load_percentage",
             "battery_level_provisional",
+            "ac_input_current",
         ):
             self.assertIsNone(result.values[key])
         self.assertEqual(result.values["battery_voltage"], 14.52)
+
+    def test_settings_readbacks_match_current_fxc_screen(self):
+        values = protocol.parse_settings(SETTINGS)
+        self.assertEqual(
+            values,
+            {
+                "low_battery_cutoff": 12.0,
+                "low_battery_cutoff_delay": 300,
+                "low_battery_recovery": 13.1,
+                "power_save_time": 25,
+                "configured_output_frequency": 60.0,
+                "configured_output_voltage": 120,
+                "output_power_limit": 2000,
+                "output_power_limit_delay": 300,
+                "utility_ac_under_voltage": 90,
+            },
+        )
+
+    def test_unfamiliar_settings_remain_unknown_without_hiding_telemetry(self):
+        for payload in (None, b"short", bytes(20), bytes([255]) * 20):
+            with self.subTest(payload=payload):
+                values = protocol.parse_telemetry(LIVE, AUX, payload).values
+                self.assertEqual(values["load_power"], 414)
+                self.assertTrue(
+                    all(values[key] is None for key in protocol.SETTINGS_KEYS)
+                )
 
     def test_identity_text_and_invalid_encoding(self):
         self.assertEqual(
@@ -163,6 +216,7 @@ class ReadOnlyClient:
                         protocol.uuid("2a02"): Characteristic(b"TESTSERIAL0001      "),
                         protocol.uuid("2a03"): Characteristic(LIVE),
                         protocol.uuid("2a04"): Characteristic(AUX),
+                        protocol.uuid("2a0d"): Characteristic(SETTINGS),
                     }
                 ),
                 protocol.uuid("1800"): Service(
@@ -194,7 +248,7 @@ class ReadTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(details["1910/2a05"], {"hex": "01020304"})
         self.assertEqual(details["1911/2a11"], {"error_type": "ProtocolError"})
         self.assertNotIn("1910/2a02", details)
-        self.assertEqual(len(client.reads), 1)
+        self.assertEqual(len(client.reads), 2)
 
     async def test_scoped_read_with_duplicate_characteristic_uuid(self):
         client = ReadOnlyClient()
@@ -202,7 +256,7 @@ class ReadTests(unittest.IsolatedAsyncioTestCase):
         result = await protocol.read_telemetry(client)
         self.assertEqual(identity.serial, "TESTSERIAL0001")
         self.assertEqual(result.values["battery_voltage"], 14.52)
-        self.assertEqual(len(client.reads), 5)
+        self.assertEqual(len(client.reads), 6)
 
     async def test_wrong_manufacturer_or_model_is_rejected(self):
         for client in (

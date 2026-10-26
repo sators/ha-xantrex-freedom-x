@@ -22,7 +22,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
     except (BleakError, ValueError, TimeoutError, OSError) as err:
         capture = {"error_type": type(err).__name__}
     return {
-        "integration_version": "0.2.0",
+        "integration_version": "0.3.0",
         "manufacturer": snapshot.identity.manufacturer,
         "model": snapshot.identity.model,
         "address": "**REDACTED**",

@@ -50,7 +50,7 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.telemetry.values["battery_voltage"], 14.52)
         self.client.disconnect.assert_awaited_once()
         self.assertFalse(self.connector.call_args.kwargs["pair"])
-        self.assertEqual(len(self.client.reads), 5)
+        self.assertEqual(len(self.client.reads), 6)
 
     async def test_parse_failure_still_releases_connection(self):
         field = self.client.services.fields[capture.protocol.LIVE_SERVICE]
@@ -96,7 +96,9 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.telemetry.values["load_power"], 414)
         self.client.disconnect.assert_awaited_once()
 
-    async def test_provisional_entities_require_opt_in_and_no_statistics(self):
+    async def test_provisional_entity_is_disabled_without_opt_in_and_no_statistics(
+        self,
+    ):
         sample = await fetch_snapshot(object(), "AA:BB:CC:DD:EE:FF")
         coordinator = SimpleNamespace(
             data=sample,
@@ -114,9 +116,20 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
                 entities.extend,
             )
             provisional = [e for e in entities if e.entity_description.provisional]
-            self.assertEqual(len(provisional), 1 if enabled else 0)
+            self.assertEqual(len(provisional), 1)
             for entity in provisional:
                 self.assertIsNone(entity.entity_description.state_class)
+                self.assertEqual(
+                    entity.entity_description.entity_registry_enabled_default, enabled
+                )
+
+    def test_setting_readbacks_are_optional_diagnostics_without_statistics(self):
+        descriptions = {item.key: item for item in sensor.SENSORS}
+        for key in capture.protocol.SETTINGS_KEYS:
+            description = descriptions[key]
+            self.assertFalse(description.entity_registry_enabled_default)
+            self.assertEqual(description.entity_category, "diagnostic")
+            self.assertIsNone(description.state_class)
 
     async def test_failed_read_makes_measurement_unavailable_and_health_off(self):
         sample = await fetch_snapshot(object(), "AA:BB:CC:DD:EE:FF")

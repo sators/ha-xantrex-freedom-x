@@ -81,7 +81,50 @@ def power_path(input_v: float, input_hz: float, output_v: float, output_hz: floa
     return None
 
 
-def parse_telemetry(live: bytes, auxiliary: bytes) -> Telemetry:
+SETTINGS_KEYS = (
+    "low_battery_cutoff",
+    "low_battery_cutoff_delay",
+    "low_battery_recovery",
+    "power_save_time",
+    "configured_output_frequency",
+    "configured_output_voltage",
+    "output_power_limit",
+    "output_power_limit_delay",
+    "utility_ac_under_voltage",
+)
+
+
+def parse_settings(payload: bytes | None) -> dict[str, float | int | None]:
+    """Decode numeric readbacks compared with FXC; do not expose setting writes.
+
+    This block mixes bytes with unaligned little-endian uint16 values. These are
+    sanity bounds for the observed 12 V / 120 V setup, not supported write ranges.
+    An absent or unfamiliar settings block leaves its diagnostics unknown.
+    """
+    result = dict.fromkeys(SETTINGS_KEYS)
+    if payload is None or len(payload) != 20 or not any(payload):
+        return result
+    for key, offset, scale, low, high in (
+        ("low_battery_cutoff", 1, 0.1, 8, 16),
+        ("low_battery_cutoff_delay", 3, 1, 0, 3600),
+        ("low_battery_recovery", 5, 0.1, 8, 16),
+        ("power_save_time", 7, 1, 0, 168),
+        ("configured_output_frequency", 9, 0.1, 45, 65),
+        ("configured_output_voltage", 11, 1, 90, 150),
+        ("output_power_limit", 13, 100, 100, 4000),
+        ("output_power_limit_delay", 15, 1, 0, 3600),
+        ("utility_ac_under_voltage", 18, 1, 60, 120),
+    ):
+        raw = struct.unpack_from("<H", payload, offset)[0]
+        value = round(raw * scale, 2)
+        if raw != 65535 and low <= value <= high:
+            result[key] = value
+    return result
+
+
+def parse_telemetry(
+    live: bytes, auxiliary: bytes, settings: bytes | None = None
+) -> Telemetry:
     """Decode observed scales; preserve unknown bytes without assigning meaning.
 
     AC pair direction was checked in AC bypass and confirmed inverter operation:
@@ -109,13 +152,19 @@ def parse_telemetry(live: bytes, auxiliary: bytes) -> Telemetry:
         "load_apparent_power": w[4] if w[4] <= 10000 else None,
         "load_power": w[5] if w[5] <= 10000 else None,
         "load_percentage": w[6] if w[6] <= 100 else None,
+        "ac_input_current": aux[2] / 10 if aux[2] <= 1000 else None,
         # Not validated away from full charge; prefer a BMS or shunt.
         "battery_level_provisional": aux[0] if aux[0] <= 100 else None,
+        **parse_settings(settings),
     }
     return Telemetry(
         values=values,
         words={"2a03": w, "2a04": aux},
-        raw={"2a03": live.hex(), "2a04": auxiliary.hex()},
+        raw={
+            "2a03": live.hex(),
+            "2a04": auxiliary.hex(),
+            **({"2a0d": settings.hex()} if settings is not None else {}),
+        },
     )
 
 
@@ -148,7 +197,11 @@ async def read_identity(client: Any) -> Identity:
 async def read_telemetry(client: Any) -> Telemetry:
     live = await read_characteristic(client, LIVE_SERVICE, "2a03")
     auxiliary = await read_characteristic(client, LIVE_SERVICE, "2a04")
-    return parse_telemetry(live, auxiliary)
+    try:
+        settings = await read_characteristic(client, LIVE_SERVICE, "2a0d")
+    except ProtocolError:
+        settings = None
+    return parse_telemetry(live, auxiliary, settings)
 
 
 async def read_diagnostic_fields(client: Any) -> dict[str, dict[str, str]]:
