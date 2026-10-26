@@ -39,25 +39,65 @@ The nRF Connect labels (for example `Reconnection Address`, `Date Time`, `Time Z
 
 Only the observed 20-byte payload layout and 12 V voltage range are accepted. Other models, firmware, 24 V systems, and sustained inverter operation have not been verified.
 
-## Install manually
+## Requirements and compatibility
+
+- Home Assistant **2026.10.0 or newer**; framework tests target 2026.10.3.
+- A **Freedom X Bluetooth Remote Panel** connected to the inverter. A non-Bluetooth panel alone will not work.
+- A working Home Assistant Bluetooth adapter or connectable Bluetooth proxy within range of the panel. Set up Home Assistant's [Bluetooth integration](https://www.home-assistant.io/integrations/bluetooth/) first.
+- The protocol currently targets the captured **Freedom X 2000, 12 V** setup. Other Freedom X/XC models and firmware are unverified; see the mapping limitations below.
+
+## Install with HACS (recommended)
+
+This integration is available as a **HACS custom repository**. It is not included in the default HACS catalog. [Install and configure HACS](https://www.hacs.xyz/docs/use/) first if needed.
+
+1. Open **HACS** in Home Assistant.
+2. Open the **⋮ menu → Custom repositories**.
+3. Enter `https://github.com/sators/ha-xantrex-freedom-x`, select **Integration** as the type, and click **Add**.
+4. Search HACS for **Xantrex Freedom X BLE (Experimental)**, open it, and choose **Download**. When no release is available, HACS installs the default branch.
+5. **Restart Home Assistant Core**. Downloading through HACS installs the files; the restart makes the integration available to Home Assistant.
+6. Continue with **Configure the integration** below.
+
+These steps follow the [HACS custom repository instructions](https://www.hacs.xyz/docs/faq/custom_repositories/). No YAML configuration, SSH access, or manual file copying is needed for a HACS installation.
+
+### Configure the integration
+
+1. Disconnect **FXC Control** and **nRF Connect** from the panel so Home Assistant can connect. Leave the panel and Home Assistant Bluetooth enabled.
+2. Open **Settings → Devices & services → Add integration**, then search for **Xantrex Freedom X BLE (Experimental)**. A matching Bluetooth advertisement may also offer discovery.
+3. Enter the panel's **Bluetooth MAC address**, choose a polling interval (30 seconds by default, 30–600 seconds allowed), and leave provisional sensors off for the first connection. The Bluetooth address is different from the serial number or `ID…` device name; find it in Home Assistant's Bluetooth advertisement monitor.
+4. Setup reads the panel's identity and one telemetry sample. After success, open its device page and confirm AC voltage, frequency, battery voltage, and telemetry availability.
+5. Compare readings with the panel display or a separate FXC Control session before relying on them in dashboards or automations. Disable this integration temporarily while using the phone app if the two compete for the connection.
+
+The integration needs no cloud account or credentials. Poll interval and provisional-sensor selection are setup parameters; changing them currently requires removing the integration entry and adding it again. HACS does not need to be removed or reinstalled.
+
+### Updates through HACS
+
+Open the integration in HACS and download an offered update, then **restart Home Assistant Core**. Read the changelog or commit notes first: protocol mappings may change while the integration is experimental. HACS manages the component files; **Devices & services** manages the configured device.
+
+### Manual installation (alternative)
 
 1. Copy `custom_components/xantrex_freedom_x_ble` into your Home Assistant configuration directory's `custom_components/` folder.
 2. Restart Home Assistant Core so it can discover the new integration.
-3. Open **Settings → Devices & services → Add integration**, then search for **Xantrex Freedom X BLE (Experimental)**. A matching Bluetooth advertisement may also offer discovery.
-4. Enter the remote's Bluetooth address, choose a polling interval, and leave provisional sensors off for the first connection.
-5. Compare the live readings to FXC Control before adding them to dashboards or automations.
+3. Follow **Configure the integration** above.
 
-The address is available in Home Assistant's Bluetooth advertisement monitor. The integration uses existing Home Assistant Bluetooth dependencies and requires no cloud account.
+## Troubleshooting
 
-### HACS custom repository
-
-Add `https://github.com/sators/ha-xantrex-freedom-x` to HACS as an **Integration** custom repository, install it, and restart Home Assistant. This repository has not been submitted to the default HACS catalog.
+- **Not found in HACS:** add the full repository URL under **Custom repositories**, with type **Integration**. Searching the default catalog alone will not find it.
+- **Downloaded but absent from Add integration:** restart Home Assistant Core, then refresh the browser. Check Home Assistant logs if it still does not appear.
+- **Cannot connect / telemetry unavailable:** disconnect phone apps, check Bluetooth range and available proxy connection slots, and confirm Home Assistant can see the panel's advertisement. The integration releases its own connection after every poll.
+- **Unsupported device or payload:** confirm the model and manufacturer, then report the firmware and a reviewed diagnostics export. The parser deliberately rejects unfamiliar frame layouts rather than producing plausible-looking values.
+- **Power or load sensors missing:** these are provisional and require an explicit opt-in during setup. Mode, battery current, faults, and settings are not implemented.
 
 ## Diagnostics and removal
 
 Use **Download diagnostics** on the integration entry to retrieve raw live frames, their decoded words, and the last successful-read time. The integration's diagnostics omit Bluetooth addresses and serial numbers; review exports before sharing. Logs from Home Assistant or third-party tools can contain identifiers independently of this integration.
 
-Disable or remove the integration through **Devices & services** to stop polling. To remove the software, remove the integration entry, delete its custom-component folder, and restart Home Assistant.
+Disable or remove the integration through **Devices & services** to stop polling. To uninstall completely, remove its entry there, remove the downloaded repository through HACS, and restart Home Assistant Core. For a manual installation, delete its custom-component folder instead of removing it through HACS.
+
+## Help validate the protocol
+
+[Open an issue](https://github.com/sators/ha-xantrex-freedom-x/issues) with the inverter model, DC system voltage, remote-panel firmware, Home Assistant version, adapter/proxy type, and the problem or observed mismatch. Useful evidence includes reviewed diagnostics and readings from the panel or FXC Control taken as close together as possible. Note whether the inverter was in bypass or inverter operation; never interrupt power or change protective settings just to collect a sample.
+
+Remove serial numbers, Bluetooth addresses, and other installation details before posting screenshots or logs. Do not post passwords or Home Assistant tokens. Compatibility reports for additional hardware are welcome, but one successful connection does not validate every field or operating mode.
 
 ## Development
 

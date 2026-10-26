@@ -49,6 +49,8 @@ jobs:
               for dependency in manifest.get("dependencies", []):
                   visit(dependency)
           visit("bluetooth_adapters")
+          # USB imports Supervisor helpers even on non-Supervised installations.
+          visit("hassio")
           subprocess.run([sys.executable, "-m", "pip", "install", *sorted(requirements)], check=True)
           PY
       - run: python -m unittest discover -s tests_homeassistant -v
