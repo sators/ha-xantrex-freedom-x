@@ -75,7 +75,7 @@ The integration needs no cloud account or credentials. Poll interval and provisi
 
 ### Updates through HACS
 
-Open the integration in HACS and download an offered update, then **restart Home Assistant Core**. Read the changelog or commit notes first: protocol mappings may change while the integration is experimental. HACS manages the component files; **Devices & services** manages the configured device.
+Open the integration in HACS and download an offered update, then **restart Home Assistant Core**. Read the [changelog](CHANGELOG.md) or commit notes first: protocol mappings may change while the integration is experimental. HACS manages the component files; **Devices & services** manages the configured device. To fetch the current default branch manually, open the integration's **⋮ menu → Update information**, then **Redownload**.
 
 ### Manual installation (alternative)
 
