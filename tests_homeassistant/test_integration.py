@@ -124,6 +124,15 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     def test_flow_is_registered(self):
         self.assertEqual(config_flow.XantrexConfigFlow.VERSION, 1)
 
+    def test_measurement_display_preserves_useful_precision(self):
+        descriptions = {item.key: item for item in sensor.SENSORS}
+        self.assertEqual(descriptions["battery_voltage"].suggested_display_precision, 2)
+        self.assertEqual(descriptions["ac_voltage"].suggested_display_precision, 1)
+        self.assertEqual(descriptions["ac_frequency"].suggested_display_precision, 1)
+        self.assertEqual(
+            descriptions["ac_current_provisional"].suggested_display_precision, 2
+        )
+
     def test_manifest_discovery_matchers_can_initialize_bluetooth(self):
         manifest = json.loads(
             (

@@ -6,7 +6,7 @@ Experimental **read-only** Home Assistant integration for a **Freedom X 2000 12 
 
 **[Install through HACS](#install-with-hacs-recommended)** · [Report a problem](https://github.com/sators/ha-xantrex-freedom-x/issues) · [Protocol mapping](#mapping-status)
 
-This is a protocol prototype built from device captures. Parser and fake-client tests are provided. A live Home Assistant installation and reads from the inverter still need verification. Do not treat the supplied sample frames as live delivery evidence.
+This is an experimental protocol implementation built from device captures. HACS release installation, device identity, live telemetry reads, and repeated polling have been verified on one Freedom X 2000 12 V setup with Home Assistant 2026.10.3. Parser and framework tests are also provided. Other hardware, firmware, operating modes, and provisional field meanings still need validation.
 
 ## What it does
 
@@ -57,7 +57,7 @@ This integration is available as a **HACS custom repository**. It is not include
 1. Open **HACS** in Home Assistant.
 2. Open the **⋮ menu → Custom repositories**.
 3. Enter `https://github.com/sators/ha-xantrex-freedom-x`, select **Integration** as the type, and click **Add**.
-4. Search HACS for **Xantrex Freedom X BLE (Experimental)**, open it, and choose **Download**. Select the latest published release (**v0.1.1 or newer**). HACS can also install the default branch for development, but a release gives a reproducible version.
+4. Search HACS for **Xantrex Freedom X BLE (Experimental)**, open it, and choose **Download**. Select the latest published release (**v0.1.2 or newer**). HACS can also install the default branch for development, but a release gives a reproducible version.
 5. **Restart Home Assistant Core**. Downloading through HACS installs the files; the restart makes the integration available to Home Assistant.
 6. Continue with **Configure the integration** below.
 

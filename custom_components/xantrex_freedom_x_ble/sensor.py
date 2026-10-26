@@ -32,6 +32,7 @@ class XantrexSensorDescription(SensorEntityDescription):
 SENSORS = (
     XantrexSensorDescription(
         key="ac_voltage",
+        suggested_display_precision=1,
         name="AC voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -39,6 +40,7 @@ SENSORS = (
     ),
     XantrexSensorDescription(
         key="ac_frequency",
+        suggested_display_precision=1,
         name="AC frequency",
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
@@ -46,6 +48,7 @@ SENSORS = (
     ),
     XantrexSensorDescription(
         key="battery_voltage",
+        suggested_display_precision=2,
         name="Battery voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -53,6 +56,7 @@ SENSORS = (
     ),
     XantrexSensorDescription(
         key="ac_voltage_2",
+        suggested_display_precision=1,
         name="AC voltage channel 2",
         device_class=SensorDeviceClass.VOLTAGE,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -61,6 +65,7 @@ SENSORS = (
     ),
     XantrexSensorDescription(
         key="ac_frequency_2",
+        suggested_display_precision=1,
         name="AC frequency channel 2",
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
@@ -69,6 +74,7 @@ SENSORS = (
     ),
     XantrexSensorDescription(
         key="ac_current_provisional",
+        suggested_display_precision=2,
         name="AC current (provisional)",
         device_class=SensorDeviceClass.CURRENT,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,

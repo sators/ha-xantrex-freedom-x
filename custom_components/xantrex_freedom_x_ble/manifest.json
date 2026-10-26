@@ -1,7 +1,7 @@
 {
   "domain": "xantrex_freedom_x_ble",
   "name": "Xantrex Freedom X BLE (Experimental)",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "bluetooth": [
     {
       "service_uuid": "00001910-0000-1000-8000-00805f9b34fb",
