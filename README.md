@@ -57,7 +57,7 @@ This integration is available as a **HACS custom repository**. It is not include
 1. Open **HACS** in Home Assistant.
 2. Open the **⋮ menu → Custom repositories**.
 3. Enter `https://github.com/sators/ha-xantrex-freedom-x`, select **Integration** as the type, and click **Add**.
-4. Search HACS for **Xantrex Freedom X BLE (Experimental)**, open it, and choose **Download**. When no release is available, HACS installs the default branch.
+4. Search HACS for **Xantrex Freedom X BLE (Experimental)**, open it, and choose **Download**. Select the latest published release (**v0.1.1 or newer**). HACS can also install the default branch for development, but a release gives a reproducible version.
 5. **Restart Home Assistant Core**. Downloading through HACS installs the files; the restart makes the integration available to Home Assistant.
 6. Continue with **Configure the integration** below.
 
